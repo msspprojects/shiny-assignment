@@ -1,0 +1,12 @@
+---
+title: "shiny-assignment"
+author: "Suheng Yao"
+date: "2024-11-15"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library("shiny")
+```
+
