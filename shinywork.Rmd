@@ -7,6 +7,106 @@ output: pdf_document
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
-library("shiny")
+library(shiny)
+library(microbenchmark)
 ```
+```{r}
+ui <- fluidPage(
+  selectInput("dataset", label = "Dataset", choices = ls("package:datasets")),
+  verbatimTextOutput("summary"),
+  tableOutput("table")
+)
+server <- function(input, output, session) {
+  output$summary <- renderPrint({
+    mb_summary <- microbenchmark(
+      {
+        dataset <- get(input$dataset, "package:datasets")
+        summary(dataset)
+      },
+      times = 10
+    )
+    print(mb_summary)
+    dataset <- get(input$dataset, "package:datasets")
+    summary(dataset)
+  })
+  
+  output$table <- renderTable({
+    mb_table <- microbenchmark(
+      {
+        dataset <- get(input$dataset, "package:datasets")
+        dataset
+      },
+      times = 10 # Number of times to repeat the benchmark
+    )
+    dataset <- get(input$dataset, "package:datasets")
+    dataset
+  })
+}
+shinyApp(ui, server)
+```
+The maximum running time is 588.7 ms, but the minimum running time is 79.2 ms, which means that there is a large difference in running time efficiency. Since mean is much larger than the median running time, the distribution of running time could be right skewed, indicating that there are more outliers and running times greater than median.
+
+```{r}
+ui <- fluidPage(
+  selectInput("dataset", label = "Dataset", choices = ls("package:datasets")),
+  verbatimTextOutput("summary"),
+  tableOutput("table")
+)
+server <- function(input, output, session) {
+  # Create a reactive expression
+  dataset <- reactive({
+    get(input$dataset, "package:datasets")
+  })
+
+  output$summary <- renderPrint({
+    mb_summary <- microbenchmark(
+      {
+        summary(dataset())
+      },
+      times = 10
+    )
+    print(mb_summary)
+    summary(dataset())
+  })
+  
+  output$table <- renderTable({
+    mb_summary <- microbenchmark(
+      {
+        dataset()
+      },
+      times = 10
+    )
+    print(mb_summary)
+    dataset()
+  })
+}
+shinyApp(ui, server)
+```
+It is clear that using dataset() makes the function run much faster because the maximum running time is only 230.6 ms. The reason may be related to dataset() function is using reactive programming, and it only runs the first time it is called and then it caches its result until it needs to be updated. Thus, there are no duplicated codes, and the get() function won't need to run every time when initiating a shiny app.
+
+## 2.3.5
+
+### Question 1
+
+(a) verbatimTextOutput
+(b) textOutput
+(c) verbatimTextOutput
+(d) textOutput
+
+### Question 2
+```{r}
+ui <- fluidPage(
+  plotOutput("plot", width = "400px")
+)
+server <- function(input, output, session) {
+  output$plot <- renderPlot(plot(1:5), res = 96, height = 300,
+                            width = 700, 
+                            alt = "Five Random Numbers")
+}
+shinyApp(ui, server)
+```
+
+
+
+
 
