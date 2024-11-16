@@ -9,6 +9,7 @@ output: pdf_document
 knitr::opts_chunk$set(echo = TRUE)
 library(shiny)
 library(microbenchmark)
+library(reactable)
 ```
 ```{r}
 ui <- fluidPage(
@@ -104,6 +105,149 @@ server <- function(input, output, session) {
                             alt = "Five Random Numbers")
 }
 shinyApp(ui, server)
+```
+
+### Question3
+```{r}
+ui <- fluidPage(
+  DT::DTOutput("table")
+)
+
+server <- function(input, output, session) {
+  output$table <- DT::renderDataTable(
+    mtcars,
+    options = list(
+      paging = FALSE,      
+      searching = FALSE,   
+      ordering = FALSE,    
+      info = FALSE
+    )
+  )
+}
+
+shinyApp(ui, server)
+
+```
+
+### Question 4
+```{r}
+ui <- fluidPage(
+  reactableOutput("table")
+)
+
+server <- function(input, output, session) {
+  output$table <- renderReactable({
+    reactable(
+      mtcars,
+      pagination = FALSE,       
+      sortable = FALSE,         
+      filterable = FALSE,       
+      showPageSizeOptions = FALSE,
+      bordered = TRUE,          
+      striped = TRUE
+    )
+  })
+}
+
+shinyApp(ui, server)
+
+```
+
+## 3.3.6
+
+### Question 1
+```{r}
+ui <- fluidPage(
+  textInput("name", "What's your name?"),
+  textOutput("greeting")
+)
+server1 <- function(input, output, server) {
+  input$greeting <- renderText(paste0("Hello ", input$name))
+}
+
+server2 <- function(input, output, server) {
+  output$greeting <- renderText(paste0("Hello ", input$name))
+}
+
+server3 <- function(input, output, server) {
+  output$greeting <- renderText({
+    paste0("Hello ", input$name)
+  })
+}
+
+shinyApp(ui, server)
+```
+### Question 2
+
+(1) a, b -> c -> e -> f
+(2) x1, x2, x3 -> x; y1, y2 -> y; x, y -> z
+(3) a -> b -> c -> d
+
+### Question 3
+
+Since range and var are also function names in R, Shiny may not know which function to run, and this may cause error.
+
+## 4.8
+
+### Question 2
+
+When the two function positions get flipped, the code will first select the top 5 categories, putting the rest in "Others" category, and arrange them according to their frequencies.
+
+### Question 3
+```{r}
+injuries %>%
+  mutate(diag = fct_lump(fct_infreq(diag), n = input$n_rows)) %>%
+  group_by(diag) %>%
+  summarise(n = as.integer(sum(weight)))
+```
+Assume n_rows is the number defined by the user.
+
+### Question 4
+```{r}
+narratives <- c(
+  "The patient experienced severe pain in the left arm.",
+  "The diagnosis revealed a fracture in the left wrist.",
+  "A cast was applied to immobilize the fracture.",
+  "The patient is advised to follow up in two weeks."
+)
+
+ui <- fluidPage(
+  titlePanel("Step Through Narratives"),
+  
+  
+  fluidRow(
+    column(6, actionButton("prev_btn", "Previous")),
+    column(6, actionButton("next_btn", "Next"))
+  ),
+  
+  
+  hr(),
+  textOutput("narrative_text"))
+
+server <- function(input, output, session) {
+  
+  current_narrative <- reactiveVal(1) 
+  
+  
+  observeEvent(input$next_btn, {
+    if (current_narrative() < length(narratives)) {
+      current_narrative(current_narrative() + 1) 
+    }
+  })
+  
+  observeEvent(input$prev_btn, {
+    if (current_narrative() > 1) {
+      current_narrative(current_narrative() - 1)
+    }
+  })
+  
+  output$narrative_text <- renderText({
+    narratives[current_narrative()]
+  })
+}
+
+shinyApp(ui, server)
+
 ```
 
 
