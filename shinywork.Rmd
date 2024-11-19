@@ -2,7 +2,10 @@
 title: "shiny-assignment"
 author: "Suheng Yao"
 date: "2024-11-15"
-output: pdf_document
+output:
+  html_document:
+    df_print: paged
+runtime: shiny
 ---
 
 ```{r setup, include=FALSE}
@@ -10,6 +13,9 @@ knitr::opts_chunk$set(echo = TRUE)
 library(shiny)
 library(microbenchmark)
 library(reactable)
+library(dplyr)
+library(vroom)
+library(tidyverse)
 ```
 ```{r}
 ui <- fluidPage(
@@ -195,10 +201,56 @@ When the two function positions get flipped, the code will first select the top 
 
 ### Question 3
 ```{r}
-injuries %>%
+dir.create("neiss")
+#> Warning in dir.create("neiss"): 'neiss' already exists
+download <- function(name) {
+  url <- "https://raw.github.com/hadley/mastering-shiny/main/neiss/"
+  download.file(paste0(url, name), paste0("neiss/", name), quiet = TRUE)
+}
+download("injuries.tsv.gz")
+download("population.tsv")
+download("products.tsv")
+```
+```{r, message=FALSE}
+injuries <- vroom::vroom("neiss/injuries.tsv.gz")
+head(injuries)
+```
+
+```{r}
+
+server <- function(input, output, session) {
+  injuries %>%
   mutate(diag = fct_lump(fct_infreq(diag), n = input$n_rows)) %>%
   group_by(diag) %>%
   summarise(n = as.integer(sum(weight)))
+  
+  selected <- reactive(injuries %>% filter(prod_code == input$code))
+
+  output$diag <- renderTable(
+    selected() %>% count(diag, wt = weight, sort = TRUE)
+  )
+  output$body_part <- renderTable(
+    selected() %>% count(body_part, wt = weight, sort = TRUE)
+  )
+  output$location <- renderTable(
+    selected() %>% count(location, wt = weight, sort = TRUE)
+  )
+
+  summary <- reactive({
+    selected() %>%
+      count(age, sex, wt = weight) %>%
+      left_join(population, by = c("age", "sex")) %>%
+      mutate(rate = n / population * 1e4)
+  })
+
+  output$age_sex <- renderPlot({
+    summary() %>%
+      ggplot(aes(age, n, colour = sex)) +
+      geom_line() +
+      labs(y = "Estimated number of injuries")
+  }, res = 96)
+}
+
 ```
 Assume n_rows is the number defined by the user.
 
